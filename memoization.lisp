@@ -11,6 +11,12 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
 
+(defun memoization-hash-table ()
+  "Return a thread safe hash table."
+  #+sbcl (make-hash-table :test 'equal :synchronized t)
+  #+ccl  (make-hash-table :test 'equal :shared :lock-free)
+  #-(or ccl sbcl) (make-hash-table :test 'equal))
+
 (defclass memoization-info ()
   ((function
     :initarg :function :reader original-function
@@ -19,7 +25,7 @@
     :accessor wrapped-function
     :documentation "The memoizing version of the function.")
    (table
-    :initarg :table :reader memoized-table :initform (make-hash-table :test 'equal)
+    :initarg :table :reader memoized-table :initform (memoization-hash-table)
     :documentation "a hash-table containing the memoized computations so far")
    (argument-normalizer
     :initarg :argument-normalizer :reader memoized-argument-normalizer :initform nil
@@ -156,7 +162,7 @@ Keyword arguments TABLE and NORMALIZATION are as per MEMOIZE."
 ;;; to normalize the arguments of the function you call such that EQUAL
 ;;; will properly compare argument lists. You may pass any additional
 ;;; arguments that you don't want memoized in dynamic variable bindings.
-(defvar *memoized* (make-hash-table :test 'equal))
+(defvar *memoized* (memoization-hash-table))
 
 (define-memo-function (memoized-funcall :table *memoized*) (function &rest arguments)
   "This is a generic memoized function"
